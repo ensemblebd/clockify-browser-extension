@@ -1,41 +1,65 @@
 // Side panel view - Task or Subtask
-clockifyButton.render(
-	'.TaskPaneToolbarAnimation-row:not(.clockify)',
-	{ observe: true },
-	(sidepanelHeader) => {
-		$('.clockify-widget-container', sidepanelHeader)?.remove();
-
-		const sidepanel = $('.TaskPaneBody-main');
-		const isSubtaskOpened = $('.TaskAncestry');
-
-		const asanaTaskname = () =>
-			text('[role="heading"] textarea', sidepanel) ||
-			/* text('[aria-label="Task Name"]') || */
-			text('.TaskPane-titleRow textarea') ||
-			text('.TaskPane-titleRow :first-child');
-		const asanaTaskTags = () => textList('.TaskTags .TokenizerPillBase-name');
-
-		const description = asanaTaskname;
-		const projectName = () =>
-			isSubtaskOpened
-				? text('.TaskAncestry-ancestorProject')
-				: text('.TaskProjects .TokenizerPillBase-name');
-		const taskName = asanaTaskname;
-		const tagNames = asanaTaskTags;
-
-		const entry = { description, projectName, taskName, tagNames };
-
-		const link = clockifyButton.createButton(entry);
-		const input = clockifyButton.createInput(entry);
-
-		const container = createTag('div', 'clockify-widget-container');
-
-		container.append(link);
-		container.append(input);
-
-		sidepanelHeader.append(container);
+(async() => {
+	let projects=[];
+	const storage = await localStorage.aBrowser.storage.local.get();
+	if (storage.preProjectList) {
+		projects = storage.preProjectList.projectList.map((r) => {
+			return { name: r.name, id: r.id };
+		});
 	}
-);
+	
+	clockifyButton.render(
+		'.TaskPaneToolbarAnimation-row:not(.clockify)',
+		{ observe: true },
+		(sidepanelHeader) => {
+			$('.clockify-widget-container', sidepanelHeader)?.remove();
+
+			const sidepanel = $('.TaskPaneBody-main');
+			const isSubtaskOpened = $('.TaskAncestry');
+
+			const asanaTaskname = () =>
+				text('[role="heading"] textarea', sidepanel) ||
+				/* text('[aria-label="Task Name"]') || */
+				text('.TaskPane-titleRow textarea') ||
+				text('.TaskPane-titleRow :first-child');
+			const asanaTaskTags = () => textList('.TaskTags .TokenizerPillBase-name');
+
+			const description = asanaTaskname;
+			const projectName = () => {
+				let result = isSubtaskOpened
+					? text('.TaskAncestry-ancestorProject')
+					: text('.TaskProjects .TokenizerPillBase-name');
+
+				if (!result) {
+					// in list view, we must pull project name from header area.
+					result = $('.ProjectPageHeaderProjectTitle-input')?.value;
+				}
+
+				// try and match the found project name on raw page content to the real project list.
+				const project = result ? projects.find((p) => result.toLowerCase().includes(p.name.toLowerCase())) : null;
+				if (project) {
+					result = project.name;
+				}
+				
+				return result;
+			}
+			const taskName = asanaTaskname;
+			const tagNames = asanaTaskTags;
+
+			const entry = { description, projectName, taskName, tagNames };
+
+			const link = clockifyButton.createButton(entry);
+			const input = clockifyButton.createInput(entry);
+
+			const container = createTag('div', 'clockify-widget-container');
+
+			container.append(link);
+			container.append(input);
+
+			sidepanelHeader.append(container);
+		}
+	);
+})();
 
 // Side panel view - Subtask list
 clockifyButton.render(
